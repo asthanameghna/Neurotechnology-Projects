@@ -1,0 +1,132 @@
+
+%%% Mechanical Simulation
+%% Right
+%% Subject A
+c=1;
+for i=37:143 %Knee Angles
+%Force = Crank Length * (Hip Force *cos(180-Knee Angle) + Knee
+Force)*Angular Acceleration + Inertia Component * Angular
+Acceleration;
+%% Inertia Component = Arbitrary Mass*TotalLegLength^2;
+t1(c)=17.3*(100*cos(3.14/180*(180-i))+100)*1+2167*0.78*0.78*1;
+c=c+1;
+end
+m = max(t1);
+k1 = t1/m*100;
+x=linspace(37,143,107);
+plot(x,k1,'m+'); hold on;
+plot(x,k1,'m'); hold on;
+13.2.2 Signal Processing for Muscle Model
+%%% Filtered, Rectified and Smoothed Data: Subject A
+%% LHAM
+mLHAM = [(R2_L_HAM_MMG-R2_L_HAM_N) (R3_L_HAM_MMG-R3_L_HAM_N) (R4_L_HAM_MMG-
+R4_L_HAM_N)];
+x=mLHAM;
+for i=1:length(x)
+if x(i)<0
+x(i)=0;
+end
+end
+windowSize = 200;
+D =windowSize;
+t = linspace(1,60000,60003-D);
+b = (1/windowSize)*ones(1,windowSize);
+a = 1;
+y = filter(b,a,[x'; zeros(D,1)]);
+y= y(D+1:end-D);
+[envHigh1, envLow] = envelope(y,350,'peak');
+figure
+plot(envHigh1);
+MSc Thesis Design of Stimulation Protocol
+66
+13.2.3 Muscle Activation Model
+%%% Muscle Activation Simulation
+load ActivationDataRight;
+load KneeAngleForceRelationRight;
+%% Open Sim Knee Angles
+% OPkn = [180 170 160 150 140 130 120 110 100 90 80];
+%% Subject Knee Angle and Force Relation (Right)
+% Ang = 2.426*F - 101.4; % Subject D
+% Ang = 6.078*F - 448.1; % Subject B
+% Ang = 4.097*F - 241.8; % Subject E
+% Ang = 3.453*F - 333.2; % Subject C
+% Ang = 4.312*F - 282; % Subject A
+%% Data Hamstring
+% Hfa = [3358 3345 3302 3222 3107 2969 2810 2645 2487 2348 2238];
+% Hfp = [25.81 14.99 7.175 3.950 1.318 0 0 0 0 0 0];
+% Hl = [0.5980 0.5797 0.5584 0.5351 0.5109 0.4861 0.4613 0.4372 0.4147 0.3947 0.3780];
+%
+% Hnfa = Hfa/3358;
+% Hnfp = Hfp/25.81;
+% Hnl = Hl/0.5980;
+%% Hamstring Relations
+% HactFor = -1.601*len^2 + 3.565*len -0.956; % NORM Active Force v/s Length
+% HpasFor1 = 51.16*len^2 - 88.62*len + 38.44; % NORM Passive Force v/s Length % 1 to 5
+% HpasFor2 = 0 % NORM Passive Force v/s Length % 6 to 11
+% HnorL = 0.003826*kn + 0.3166; % NORM length v/s Knee Angle
+% HFor = 1.527*vel^2 + 1.969*vel + 0.9997; % NORM Total Force v/s Velocity
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Right Hamstring %%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Subject D
+%%% Muscle Activation
+A = -1;
+a = (exp(A*A_avRh)-1)/(exp(A)-1);
+%%% Hill Model Prep
+Ang1 = 2.426*A_fr - 101.4; % Force to Knee Angle
+NorL = 0.003826*Ang1 + 0.3166; % Knee Angle to MT Length
+ActFor = -1.601*NorL.^2 + 3.565*NorL -0.956; % MT Length to Active Force
+for i=1:length(A_fr) % MT Length to Passive Force
+MSc Thesis Design of Stimulation Protocol
+67
+if NorL(i) > 0.4861
+PasFor(i) = 51.16*NorL(i).^2 - 88.62*NorL(i) + 38.44;
+else
+PasFor(i) = 0;
+end
+end
+vel = (1-ActFor)./(1+ActFor);
+ForVel = 1.527*vel.^2 + 1.969*vel + 0.9997; % Velocity to Active Force
+Fmax = 3358 + 25.81;
+%%%Hill Model
+for i=1:length(A_fr)
+Fmt1(i) = Fmax*(ActFor(i)*vel(i)*a(i)+PasFor(i));
+end
+maxFmt = max(Fmt1);
+Fper1 = Fmt1/maxFmt*100;
+figure
+plot(A_avRh,Fper1,'bo'); hold on;
+[p, gof] = fit(A_avRh', Fper1', 'poly1' );plot( p,'b');hold on;
+%% Quadriceps Relation
+% QactFor = -2.256*len^2 + 3.873*len -0.6023; % NORM Active Force v/s Length
+% QpasFor1 = 0; % NORM Passive Force v/s Length % 1 to 7
+% QpasFor2 = 27.98*len^2 - 45.41*len + 18.42; % NORM Passive Force v/s Length % 8 to 11
+% QnorL = -0.006286*kn + 1.527; % NORM length v/s Knee Angle
+% QFor = 1.488*vel^2 - 1.975*vel +1.001; % NORM Total Force v/s Velocity
+%%%%%%%%%%%%%%%%%%%%%%%%%%%% Right Quadriceps %%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Subject D
+%%% Muscle Activation
+A=-1;
+a = (exp(A*A_avRq)-1)/(exp(A)-1);
+%%% Hill Model Prep
+Ang1q = 2.426*A_fr - 101.4; % Force to Knee Angle
+NorL = -0.006286*Ang1q + 1.527; % Knee Angle to MT Length
+ActFor = -2.256*NorL.^2 + 3.873*NorL -0.6023; % MT Length to Active Force
+for i=1:length(A_fr) % MT Length to Passive Force
+if NorL(i) < 0.3508
+PasFor(i) = 27.98*NorL(i)^2 - 45.41*NorL(i) + 18.42;
+else
+PasFor(i) = 0;
+end
+end
+vel = (1-ActFor)./(1+ActFor);
+ForVel = 1.488*vel.^2 - 1.975*vel +1.001; % Velocity to Active Force
+Fmax = 5306 + 269.1;
+MSc Thesis Design of Stimulation Protocol
+68
+%%%Hill Model
+for i=1:length(A_fr)
+Fmt1q(i) = Fmax*(ActFor(i)*vel(i)*a(i)+PasFor(i));
+end
+maxFmt = max(Fmt1q);
+Fper1q = Fmt1q/maxFmt*100;
+figure;plot(A_avRq,Fper1q,'bo');hold on;
+[p, gof] = fit(A_avRq', Fper1q', 'poly1' );plot( p,'b');hold on;
